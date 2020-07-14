@@ -41,10 +41,10 @@ class DarkNet(nn.Module):
         self.layer5 = self.make_layer([512, 1024], layers[4])  # 4
         # 进行权值初始化
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):  # 用isinstance()判断两个类型是否相同,此处判断m是否为nn.Conv2d
+            if isinstance(m, nn.Conv2d):  # 用isinstance()判断m是否为nn.Conv2d类
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))  # 正态分布初始化
-            elif isinstance(m, nn.BatchNorm2d):  # 用isinstance()判断两个类型是否相同,此处判断m是否为nn.BatchNorm2d
+            elif isinstance(m, nn.BatchNorm2d):  # 用isinstance()判断m是否为nn.BatchNorm2d类
                 m.weight.data.fill_(1)  # weight为1
                 m.bias.data.zero_()  # bias为0
 
