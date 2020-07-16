@@ -80,13 +80,3 @@ def darknet53(pretrained):
 
     return model
 
-
-# Test:
-model = darknet53(None)
-print(model)
-x = torch.randn(1, 3, 416, 416)
-y1, y2, y3 = model(x)
-print(x.size())
-print(y1.size())
-print(y2.size())
-print(y3.size())
