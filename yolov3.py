@@ -44,39 +44,28 @@ class YoloV3(nn.Module):
         darknet_out_channels = [256, 512, 1024]  # darknet输出的通道数
 
         final_channel0 = len(config["yolo"]["anchors"][0]) * (5 + config["yolo"]["classes"])  # 计算最终通道数3*(5+20)=75
-        self.last_layer0 = branch_layers([512, 1024], darknet_out_channels[2], final_channel0)
+        self.branch_layer0 = branch_layers([512, 1024], darknet_out_channels[2], final_channel0)
 
         final_channel1 = len(config["yolo"]["anchors"][1]) * (5 + config["yolo"]["classes"])
-        self.last_layer1_conv = conv2d(512, 256, 1)
-        self.last_layer1_upsample = nn.Upsample(scale_factor=2, mode='nearest')
-        self.last_layer1 = branch_layers([256, 512], darknet_out_channels[1] + 256, final_channel1)
+        self.branch_layer1_conv = conv2d(512, 256, 1)
+        self.branch_layer1_upsample = nn.Upsample(scale_factor=2, mode='nearest')
+        self.branch_layer1 = branch_layers([256, 512], darknet_out_channels[1] + 256, final_channel1)
 
         final_channel2 = len(config["yolo"]["anchors"][2]) * (5 + config["yolo"]["classes"])
-        self.last_layer2_conv = conv2d(256, 128, 1)
-        self.last_layer2_upsample = nn.Upsample(scale_factor=2, mode='nearest')
-        self.last_layer2 = branch_layers([128, 256], darknet_out_channels[0] + 128, final_channel2)
+        self.branch_layer2_conv = conv2d(256, 128, 1)
+        self.branch_layer2_upsample = nn.Upsample(scale_factor=2, mode='nearest')
+        self.branch_layer2 = branch_layers([128, 256], darknet_out_channels[0] + 128, final_channel2)
 
     def forward(self, x):
         x2, x1, x0 = self.backbone(x)  # x2, x1, x0分别为darknet中out3, out4, out5
-        out0, out0_branch = branch(self.last_layer0, x0)
-        x1_in = self.last_layer1_conv(out0_branch)
-        x1_in = self.last_layer1_upsample(x1_in)
+        out0, out0_branch = branch(self.branch_layer0, x0)
+        x1_in = self.branch_layer1_conv(out0_branch)
+        x1_in = self.branch_layer1_upsample(x1_in)
         x1_in = torch.cat([x1_in, x1], 1)
-        out1, out1_branch = branch(self.last_layer1, x1_in)
+        out1, out1_branch = branch(self.branch_layer1, x1_in)
 
-        x2_in = self.last_layer2_conv(out1_branch)
-        x2_in = self.last_layer2_upsample(x2_in)
+        x2_in = self.branch_layer2_conv(out1_branch)
+        x2_in = self.branch_layer2_upsample(x2_in)
         x2_in = torch.cat([x2_in, x2], 1)
-        out2, _ = branch(self.last_layer2, x2_in)
+        out2, _ = branch(self.branch_layer2, x2_in)
         return out0, out1, out2
-
-
-# Test:
-model = YoloV3(Config)
-print(model)
-x = torch.randn(1, 3, 416, 416)
-y1, y2, y3 = model(x)
-print(x.size())
-print(y1.size())
-print(y2.size())
-print(y3.size())
