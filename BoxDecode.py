@@ -5,7 +5,7 @@ from yolov3 import YoloV3
 
 
 class BoxDecode(nn.Module):
-    def __init__(self, anchors, num_classes, img_size):  # 某一个尺度anchors，其中包含三个anchor,一次传入三个。
+    def __init__(self, anchors, num_classes, img_size):  # 某一个尺度anchors,其中包含三个anchor,一次传入三个
         super(BoxDecode, self).__init__()
         self.anchors = anchors
         self.num_anchors = len(anchors)  # 3个anchor
@@ -29,24 +29,23 @@ class BoxDecode(nn.Module):
                                 self.bbox_attrs, input_height, input_width).permute(0, 1, 3, 4, 2).contiguous()
         # permute(0, 1, 3, 4, 2)将矩阵按原顺序的01342排列N*3*13*13*25  contiguous()把tensor变成在内存中连续分布的形式
         # 获取先验框的大小位置、置信度、类别信息
-        x = torch.sigmoid(prediction[..., 0])  # x torch.Size([1, 3, 13, 13])
+        x = torch.sigmoid(prediction[..., 0])  # x torch.Size([1, 3, 13, 13]) 且做了sigmoid归一化
         y = torch.sigmoid(prediction[..., 1])  # y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
         conf = torch.sigmoid(prediction[..., 4])  # 置信度
         pred_cls = torch.sigmoid(prediction[..., 5:])  # 各类别置信度 torch.Size([1, 3, 13, 13, 20])
 
-        float_tensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
-        long_tensor = torch.cuda.LongTensor if x.is_cuda else torch.LongTensor
+        float_tensor = torch.cuda.Tensor if x.is_cuda else torch.Tensor
 
-        # 生成网格，先验框中心，网格左上角
+        # 生成网格，先验框中心为网格左上角
         grid_x = torch.linspace(0, input_width - 1, input_width).repeat(input_width, 1).repeat(
             batch_size * self.num_anchors, 1, 1).view(x.shape).type(float_tensor)  # torch.Size([1, 3, 13, 13])
         grid_y = torch.linspace(0, input_height - 1, input_height).repeat(input_height, 1).t().repeat(
             batch_size * self.num_anchors, 1, 1).view(y.shape).type(float_tensor)  # torch.Size([1, 3, 13, 13])
         # 生成先验框的宽高
-        anchor_w = float_tensor(scaled_anchors).index_select(1, long_tensor([0]))  # 取scaled_anchors第0列,三个anchor的宽
-        anchor_h = float_tensor(scaled_anchors).index_select(1, long_tensor([1]))  # torch.Size([3, 1])
+        anchor_w = float_tensor(scaled_anchors).index_select(1, torch.tensor(0))  # 取scaled_anchors第0列,三个anchor的宽
+        anchor_h = float_tensor(scaled_anchors).index_select(1, torch.tensor(1))  # torch.Size([3, 1])
         anchor_w = anchor_w.repeat(batch_size, 1).repeat(1, 1, input_height * input_width).view(w.shape)
         # torch.Size([1, 3, 13, 13])
         anchor_h = anchor_h.repeat(batch_size, 1).repeat(1, 1, input_height * input_width).view(h.shape)
@@ -58,7 +57,7 @@ class BoxDecode(nn.Module):
         pred_boxes[..., 3] = torch.exp(h.data) * anchor_h
 
         # 用于将输出调整为相对于416x416的大小
-        scale = torch.Tensor([stride_w, stride_h] * 2).type(float_tensor)
+        scale = torch.tensor([stride_w, stride_h] * 2).type(float_tensor)  # 注意tensor与Tensor区别
         output = torch.cat((pred_boxes.view(batch_size, -1, 4) * scale,
                             conf.view(batch_size, -1, 1), pred_cls.view(batch_size, -1, self.num_classes)), -1)
         return output.data
@@ -67,7 +66,10 @@ class BoxDecode(nn.Module):
 # Test:
 model1 = YoloV3(Config)
 data = torch.randn(1, 3, 416, 416)
-y1, y2, y3 = model1(data)
-model2 = BoxDecode(Config["yolo"]["anchors"][0], 20, (416, 416))
-output = model2(y1)
-print(output.size())
+y = model1(data)
+model = []
+for i in range(3):
+    model.append(BoxDecode(Config["yolo"]["anchors"][i], Config["yolo"]["classes"], (416, 416)))
+for i in range(3):
+    output = model[i](y[i])
+    print(output.size())
