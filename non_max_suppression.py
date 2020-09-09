@@ -2,21 +2,20 @@ import torch
 from iou import bbox_iou
 
 
-def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
-    # 求左上角和右下角
+def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):  # conf_thres置信度阈值
+    # 将中心加宽高的形式转换为左上角右下角的形式
     box_corner = prediction.new(prediction.shape)
-    box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2
-    box_corner[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2
-    box_corner[:, :, 2] = prediction[:, :, 0] + prediction[:, :, 2] / 2
-    box_corner[:, :, 3] = prediction[:, :, 1] + prediction[:, :, 3] / 2
+    box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2  # 左上角x
+    box_corner[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2  # 左上角y
+    box_corner[:, :, 2] = prediction[:, :, 0] + prediction[:, :, 2] / 2  # 右下角x
+    box_corner[:, :, 3] = prediction[:, :, 1] + prediction[:, :, 3] / 2  # 右下角y
     prediction[:, :, :4] = box_corner[:, :, :4]
 
-    output = [None for _ in range(len(prediction))]
+    output = [None for _ in range(len(prediction))]  # 生成一个列表，长度和prediction相同
     for image_i, image_pred in enumerate(prediction):
         # 利用置信度进行第一轮筛选
         conf_mask = (image_pred[:, 4] >= conf_thres).squeeze()
-        image_pred = image_pred[conf_mask]
-
+        image_pred = image_pred[conf_mask]  # image_pred为34*85
         if not image_pred.size(0):
             continue
 

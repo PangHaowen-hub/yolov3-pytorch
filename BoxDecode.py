@@ -59,17 +59,6 @@ class BoxDecode(nn.Module):
         # 用于将输出调整为相对于416x416的大小
         scale = torch.tensor([stride_w, stride_h] * 2).type(float_tensor)  # 注意tensor与Tensor区别
         output = torch.cat((pred_boxes.view(batch_size, -1, 4) * scale,
-                            conf.view(batch_size, -1, 1), pred_cls.view(batch_size, -1, self.num_classes)), -1)
+                            conf.view(batch_size, -1, 1), pred_cls.view(batch_size, -1, self.num_classes)),
+                           -1)  # dim=-1 表示倒数第一维
         return output.data
-
-
-# Test:
-model1 = YoloV3(Config)
-data = torch.randn(1, 3, 416, 416)
-y = model1(data)
-model = []
-for i in range(3):
-    model.append(BoxDecode(Config["yolo"]["anchors"][i], Config["yolo"]["classes"], (416, 416)))
-for i in range(3):
-    output = model[i](y[i])
-    print(output.size())

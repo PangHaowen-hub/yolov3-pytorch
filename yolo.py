@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import colorsys
+import colorsys  # 此模块提供了用于RGB和YIQ/HLS/HSV颜色模式的转换的接口
 import os
 import torch
 import torch.nn as nn
@@ -11,7 +11,7 @@ from config import Config
 from BoxDecode import BoxDecode
 from non_max_suppression import non_max_suppression
 from letterbox_image import letterbox_image
-# from utils.utils import non_max_suppression, bbox_iou, letterbox_image, yolo_correct_boxes
+from correct_box import yolo_correct_boxes
 
 
 class YOLO(object):
@@ -37,15 +37,15 @@ class YOLO(object):
         self.config = Config
         self.generate()
 
-    # 获得所有的分类
+    # 获取分类名称
     def _get_class(self):
         classes_path = os.path.expanduser(self.classes_path)
-        with open(classes_path) as f:
-            class_names = f.readlines()
-        class_names = [c.strip() for c in class_names]
+        with open(classes_path) as f:  # 当with as代码块结束时，自动关闭打开的文件，不会造成系统资源的长期占用
+            class_names = f.readlines()  # readlines读取所有行并返回列表
+        class_names = [c.strip() for c in class_names]  # strip()用于移除字符串头尾的字符（默认为空格或换行符）
         return class_names
 
-    # 获得所有的分类
+    #
     def generate(self):
         self.config["yolo"]["classes"] = len(self.class_names)
         self.net = YoloV3(self.config)
@@ -69,19 +69,18 @@ class YOLO(object):
 
         print('{} model, anchors, and classes loaded.'.format(self.model_path))
         # 画框设置不同的颜色
-        hsv_tuples = [(x / len(self.class_names), 1., 1.)
-                      for x in range(len(self.class_names))]
-        self.colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
+        hsv_tuples = [(x / len(self.class_names), 1., 1.) for x in range(len(self.class_names))]  # 生成20或80种颜色列表
+        self.colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))  # 用lambda定义一个简单函数，再结合map使用
         self.colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), self.colors))
-
-    # 检测图片
+        # 此处先将hsv格式转换为rgb格式，由于默认为0-1小数，然后分别乘255
+    # 预测图片，并画出框
     def detect_image(self, image):
         image_shape = np.array(np.shape(image)[0:2])
 
         crop_img = np.array(letterbox_image(image, (self.model_image_size[0], self.model_image_size[1])))
         photo = np.array(crop_img, dtype=np.float32)
         photo /= 255.0
-        photo = np.transpose(photo, (2, 0, 1))
+        photo = np.transpose(photo, (2, 0, 1))  # 将通道放到最前面
         photo = photo.astype(np.float32)
         images = []
         images.append(photo)
@@ -96,7 +95,7 @@ class YOLO(object):
             output_list = []
             for i in range(3):
                 output_list.append(self.yolo_decodes[i](outputs[i]))
-            output = torch.cat(output_list, 1)
+            output = torch.cat(output_list, 1)  # 将所有先验框放到一个list中，大小为1*10647*类别
             batch_detections = non_max_suppression(output, self.config["yolo"]["classes"],
                                                    conf_thres=self.confidence,
                                                    nms_thres=0.3)
@@ -112,7 +111,7 @@ class YOLO(object):
                                                                                                       -1), np.expand_dims(
             top_bboxes[:, 2], -1), np.expand_dims(top_bboxes[:, 3], -1)
 
-        # 去掉灰条
+
         boxes = yolo_correct_boxes(top_ymin, top_xmin, top_ymax, top_xmax,
                                    np.array([self.model_image_size[0], self.model_image_size[1]]), image_shape)
 
