@@ -1,6 +1,8 @@
 import numpy as np
 
 
+# 将先验框放缩到原图大小
+# input_shape为加灰条后的图像大小，image_shape为原图像大小
 def yolo_correct_boxes(top, left, bottom, right, input_shape, image_shape):
     new_shape = image_shape * np.min(input_shape / image_shape)
 
