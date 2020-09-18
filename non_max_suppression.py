@@ -2,7 +2,7 @@ import torch
 from iou import bbox_iou
 
 
-def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):  # conf_thres置信度阈值
+def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):  # conf_thres置信度阈值,nms_thres=0.4类阈值
     # 将中心加宽高的形式转换为左上角右下角的形式
     box_corner = prediction.new(prediction.shape)
     box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2  # 左上角x
@@ -51,7 +51,7 @@ def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
                 detections_class = detections_class[1:][ious < nms_thres]  # 若置信度最大的框与某框iou大于阈值，则舍弃某框
             # 堆叠
             max_detections = torch.cat(max_detections).data
-            # Add max detections to outputs
+            # 将置信度最大的先验框输出
             output[image_i] = max_detections if output[image_i] is None else torch.cat((output[image_i], max_detections))
 
     return output
